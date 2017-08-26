@@ -1,0 +1,349 @@
+<style>
+.upload
+{
+	margin-top:10px;
+	width:280px;
+	height:30px;
+}
+.upload .uploadbtnBox
+{
+	float:left;
+	height:30px;
+	width:70px;
+	margin-right:8px;
+}
+.upload .progress
+{
+	height:4px;
+	line-height:4px;
+	*zoom:1;
+	background:#fff;
+	float:left;
+	width:200px;
+	border:1px #ccc solid;
+	overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+
+	display:none;
+}
+.upload .filestate
+{
+	float:left;
+	height:20px;
+	text-align:left;
+	width:150px;
+	line-height:20px;
+	display:none;
+	color:#333;
+	overflow:hidden;
+}
+.upload .progresspercent
+{
+	float:right;
+	padding-top:5px;
+	height:15px;
+	text-align:right;
+	font-size:9px;
+	line-height:15px;
+	color:#333;
+}
+
+.upload .uploadbtnBox .a-upload {
+	height:28px;
+	background:#4090c0;
+	border:1px solid #dddddd;color:#ffffff;
+	line-height:28px;
+	padding:0 6px;
+	font-size:0.9em;
+	overflow: hidden;
+	display: inline-block;
+	text-decoration:none;
+	*display: inline;
+	*zoom: 1
+}
+
+.upload .uploadbtnBox .a-upload  input {
+	position: absolute;
+	width:70px;
+	height:30px;
+	overflow:hidden;
+	margin-left:-10px;
+	opacity: 0;
+	filter: alpha(opacity=0);
+	cursor: pointer
+}
+
+.upload .progress .bar
+{
+	height:4px;
+	line-height:4px;
+	background:#4090c0;
+	*zoom:1;
+}
+
+.clearfix:after {
+	content: ".";
+	display: block;
+	height: 0;
+	visibility: hidden;
+	clear: both;
+}
+.clearfix {
+	_zoom: 1;
+}
+.clearfix {
+	*zoom:1;
+}
+</style>
+<div class="row">
+<div class="span12">
+	<div class="widget ">
+		<div class="widget-header">
+			<i class="icon-plus"></i>
+ 			<h3>添加任务</h3>
+		</div> <!-- /widget-header -->
+
+		<div class="widget-content">
+		
+		<div class="alert alert-danger hide" role="alert"></div>
+
+		<form id="add-task"  class="form-horizontal">
+			<fieldset>
+				
+				<div class="control-group">											
+					<label class="control-label" for="task_name">任务名称</label>
+					<div class="controls">
+						<input type="text" class="span6" id="task_name">
+					</div>				
+				</div>
+								
+				<div class="control-group">											
+					<label class="control-label" for="description">任务说明</label>
+					<div class="controls">
+						<textarea class="span6" id="description" rows="3"></textarea>
+					</div>
+				</div>
+				
+				<div class="control-group">											
+					<label class="control-label" for="group_id">分组</label>
+					<div class="controls">
+						<select id="group_id">
+							{{range $k, $v := .groups}}
+							<option value="{{$v.Id}}">{{$v.GroupName}}</option>
+							{{end}}
+						</select>
+					</div>				
+				</div>
+				
+				<div class="control-group">											
+					<label class="control-label">是否只允许一个实例</label>
+					<div class="controls concurrent">
+						<label class="radio inline ">
+							<input type="radio" value="0" checked> 是
+						</label>
+						<label class="radio inline">
+							<input type="radio" value="1"> 否
+						</label>
+						<p class="help-block">设为“是”的话，如果该任务在上一个时间点还没执行完，则略过不执行</p>
+					</div>
+				</div>
+				
+				<div class="control-group">											
+					<label class="control-label" for="cron_spec">cron表达式</label>
+					<div class="controls">
+						<input type="text" class="span6" id="cron_spec" value="">
+						<a href="{{urlfor "HelpController.Index"}}" target="_blank">参见使用帮助</a>
+					</div>
+				</div>
+
+				<div class="control-group">											
+					<label class="control-label" for="command">命令脚本</label>
+					<div class="controls">
+						<textarea class="span6" id="command" rows="6"></textarea>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<label style="line-height:40px" class="control-label">程序文件</label>
+					<div class="controls">
+						<div class="upload clearfix">
+							<div class="uploadbtnBox clearfix">
+								<a href="javascript:;" class="a-upload">
+									<input type="file" data-url="{{urlfor "TaskController.UploadRunFile"}}" name="files[]" data-file="" id="uploadFile" onchange="CheckFile(this)" />
+									点击上传
+								</a>
+							</div>
+							<div class="filestate">文件名</div>
+							<div class="progresspercent"></div>
+							<div class="progress">
+								<div class="bar" style="width: 0%;"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div class="control-group">											
+					<label class="control-label" for="timeout">超时设置</label>
+					<div class="controls">
+						<input type="text"  class="span1" id="timeout" value="0"> 秒
+						<span class="help-block">不设置的话，默认超时时间为1天</span>
+					</div>
+				</div>
+				
+				<div class="control-group">											
+					<label class="control-label">邮件通知</label>
+					<div class="controls notify">
+						<label class="radio inline">
+							<input type="radio" value="0" checked> 不通知
+						</label>
+						<label class="radio inline">
+							<input type="radio" value="1"> 执行失败时通知
+						</label>
+						<label class="radio inline">
+							<input type="radio" value="2"> 执行结束时通知
+						</label>
+					</div>
+				</div>
+				
+				<div class="control-group notify_email hide">											
+					<label class="control-label" for="notify_email">通知邮件抄送人</label>
+					<div class="controls">
+						<textarea class="span6" id="notify_email" rows="6"></textarea>
+						<p class="help-block">如果有多个地址请以分号 ; 隔开，如果不需要抄送给其他人请留空</p>
+					</div>
+				</div>
+				<br />
+				<div class="form-actions">
+					<button id="btn-save" type="submit" class="btn btn-primary">保 存</button>
+					<a href="{{urlfor "TaskController.List"}}" class="btn">返 回</a>
+				</div>
+			</fieldset>
+		</form>
+
+		</div>
+	</div>
+</div>
+</div>
+
+<script src="/static/js/uploadFile/jquery.ui.widget.js"></script>
+<script src="/static/js/uploadFile/jquery.iframe-transport.js"></script>
+<script src="/static/js/uploadFile/jquery.fileupload.js"></script>
+
+<script type="text/javascript">
+$(function () {
+
+    //初始化上传组件信息
+    $("#uploadFile").fileupload({
+        done: function (e, result) {
+            if (!result.result.IsSuccess) {
+                alert(result.result.Msg);
+            }
+
+            var resultJson = result.result.Data;
+            $(e.target).attr("data-file", resultJson.NewFileName);
+            var uploadDiv = $(e.target).parent().parent().parent();
+            uploadDiv.find(".filestate").show().text(resultJson.OldFileName);
+        },
+        progressall: function (e, data) {
+            var maxWidth = 200;
+            var percent = (data.loaded / data.total * 100).toFixed(2);
+            var progress = parseInt(data.loaded / data.total * maxWidth, 10);
+            var uploadDiv = $(e.target).parent().parent().parent();
+            uploadDiv.find(".progress").show();
+            uploadDiv.find(".bar").css("width", progress);
+            uploadDiv.find(".progresspercent").show().text(percent + "%");
+
+        }
+    });
+
+    //保存
+    $("#btn-save").click(function () {
+        $(".alert").hide();
+        $(this).attr('disabled', true);
+        UI.ShowLoading();
+
+        $.ajax({
+            url: "/task/savetask" + "?random="+ new Date(),
+            type: "POST",
+            async: true,
+            data: {
+                "group_id": $("#group_id").val(),
+                "task_name": $("#task_name").val(),
+                "description": $("#description").val(),
+                "concurrent": $(".concurrent input:checked").val(),
+                "cron_spec": $("#cron_spec").val(),
+                "command": $("#command").val(),
+                "notify": $(".notify input:checked").val(),
+                "timeout": $("#timeout").val(),
+                "notify_email": $("#notify_email").val(),
+                "runfilename": $("#uploadFile").attr("data-file") == undefined ? "" : $("#uploadFile").attr("data-file")
+			},
+            success: function (result) {
+                if (result.IsSuccess) {
+                    window.location.href = '/task/list';
+                } else {
+                    UI.HideLoading();
+
+                    $(".alert").text(result.Msg);
+                    $(".alert").show();
+                    $("#btn-save").attr('disabled', false);
+				}
+            },
+            error: function() {
+                UI.HideLoading();
+
+                $(".alert").text("保存任务失败，等会请重试");
+                $(".alert").show();
+                $("#btn-save").attr('disabled', false);
+			}
+		});
+    });
+
+	$("input[name='notify']").click(function () {
+		if ($(this).val() > 0) {
+			$('.notify_email').removeClass('hide');
+		} else {
+			$('.notify_email').addClass('hide');
+		}
+	});
+});
+
+//构造要保存的数据
+function ConstructSubmitData() {
+	var data = {
+	    group_id: $("#group_id").val(),
+		task_name: $("#task_name").val(),
+		description: $("#description").val(),
+		concurrent: $(".concurrent input:checked"),
+		cron_spec: $("#cron_spec").val(),
+		command: $("#command").val(),
+		notify: $(".notify input:checked").val(),
+		timeout: $("#timeout").val(),
+        notify_email: $("#notify_email").val(),
+		runfilename: $("#uploadFile").attr("data-file") == undefined ? "" : $("#uploadFile").attr("data-file")
+	};
+}
+
+function CheckFile(obj) {
+	var array = new Array('zip');  //可以上传的文件类型
+	if (obj.value == '') {
+		alert("请上传zip文件!");
+		return false;
+	}
+	else {
+		var fileContentType = obj.value.match(/^(.*)(\.)(.{1,8})$/)[3];
+		var isExists = false;
+		for (var i in array) {
+			if (fileContentType.toLowerCase() == array[i].toLowerCase()) {
+				isExists = true;
+				return true;
+			}
+		}
+		if (isExists == false) {
+			obj.value = null;
+			alert("请上传zip文件!");
+			return false;
+		}
+		return false;
+	}
+}
+</script>

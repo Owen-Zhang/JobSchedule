@@ -1,0 +1,257 @@
+<div class="row">
+<div class="span12">      		
+	   		
+	<div class="widget ">
+		<div class="widget-header">
+			<i class="icon-th-list"></i>
+ 			<h3>任务列表</h3>
+		</div> <!-- /widget-header -->
+
+		<div class="widget-content">
+		
+		<div class="alert hide" role="alert"></div>
+		
+		<div class="btn-toolbar">
+		
+			<div class="btn-group btn-batch">
+				<a class="btn btn-large" href="#"><i class="icon-edit icon-white"></i> 批量操作</a>
+				<a class="btn btn-large dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret"></span></a>
+				<ul class="dropdown-menu">
+				<li><a href="javascript:;" onclick="javascript:batch('active');"><i class="icon-play"></i> 开始</a></li>
+				<li><a href="javascript:;" onclick="javascript:batch('pause');"><i class="icon-pause"></i> 暂停</a></li>
+				<li class="divider"></li>
+				<li><a href="javascript:;" onclick="javascript:batch('delete');"><i class="icon-trash"></i> 删除</a></li>
+				</ul>
+			</div>
+			
+			<div class="btn-group">
+			<a href="{{urlfor "TaskController.Add"}}" class="btn btn-large btn-info"><span class="icon-plus"></span> 新建任务</a>
+			</div>
+			
+			<div class="btn-group  btn-large" style="float:right">
+			<form method="post" name="s" action="{{urlfor "TaskController.List"}}">
+				<select name="groupid" class="btn-large" style="padding-top: 0px;">
+					<option value="0">全部分组</option>
+					{{range $k, $v := .groups}}
+					<option value="{{$v.Id}}" {{if eq $v.Id $.groupid}}selected{{end}}>{{$v.GroupName}}</option>
+					{{end}}
+				</select>
+			</form>
+			</div>
+			
+		</div>
+
+		<form id="form-list" method="post" action="">
+		<table class="table table-striped table-bordered table-hover">
+			<thead>
+			<tr>
+				<th width="20"><input type="checkbox" name="chkall" value="1"></td>
+				<th width="40">ID</th>
+				<th>任务名称</th>
+				<th>时间表达式</th>
+				<th class="span2">上次执行时间</th>
+				<th class="span2">下次执行时间</th>
+				<th class="span4">操作</th>
+			</tr>
+			</thead>
+			<tbody>
+			{{range $k, $v := .list}}
+				<tr>
+					<td><input type="checkbox" name="ids" value="{{$v.id}}" /></td>
+					<td class="center">{{$v.id}}</td>
+					<td>
+						<span data-toggle="tooltip" data-placement="bottom" title="{{$v.description}}">{{$v.name}}</span>
+					</td>
+					<td>{{$v.cron_spec}}</td>
+					<td>{{$v.prev_time}}</td>
+					<td>{{$v.next_time}}</td>
+					<td status="{{$v.status}}" class="job-btn" Id="{{$v.id}}">
+						<a class="btn btn-start btn-self" href="javascript:;">开始</a>
+						<a class="btn btn-edit btn-self" href="{{urlfor "TaskController.Edit"}}?id={{$v.id}}">编辑</a>
+						<a class="btn btn-run btn-self" href="javascript:;">执行</a>
+						<a class="btn btn-delete btn-self" href="javascript:;">删除</a>
+						<a class="btn btn-info btn-self" href="{{urlfor "TaskController.Logs"}}?id={{$v.id}}">日志</a>
+					</td>
+				</tr>
+			{{end}}
+			</tbody>
+			<tfoot>
+				<tr><td colspan="100">{{str2html .pageBar}}</td></tr>
+			</tfoot>
+		</table>
+		</form>
+		
+		</div>
+	</div>
+</div>
+</div> <!-- /row -->
+
+<script>
+$(function() {
+	$('[data-toggle="tooltip"]').tooltip()
+	$("input[name='chkall']").click(function () {
+		$("input[name='ids']").attr("checked", $(this).attr("checked") == "checked");
+	});
+
+	$("select[name='groupid']").change(function () {
+		$("form[name='s']").submit();
+	});
+
+	//开始 或者 停止
+	$(".btn-start").on("click",function (e) {
+	    if ($(this).attr("disabled") == "disabled")
+	        return;
+
+        var startUrl = "/task/start";
+        var td = $(this).parent();
+        var id = td.attr("Id");
+		if ($(this).parent().attr("status") == 1)
+            startUrl = "/task/pause";
+
+        startUrl += "?random="+ new Date();
+        UI.ShowLoading();
+
+        $.ajax({
+            url: startUrl,
+            type: "POST",
+            async: true,
+            data: {"id" :id},
+            success: function (result) {
+                if (result.IsSuccess) {
+                    UI.HideLoading();
+                    td.prev().html(result.Data.Next);
+                    td.prev().prev().html(result.Data.Prev);
+                    td.attr("status", result.Data.Status);
+
+                    InitBtn(id);
+				}
+            }
+        });
+    });
+
+    $(".btn-edit").click(function (event) {
+        if ($(this).attr("disabled") == "disabled")
+            event.preventDefault();
+    });
+
+	//运行
+	$(".btn-run").click(function (event) {
+        if ($(this).attr("disabled") == "disabled") {
+            event.preventDefault();
+            return;
+        }
+
+        UI.ShowLoading();
+
+        var td = $(this).parent();
+		var id = td.attr("Id");
+		$.ajax({
+			url: "/task/run" + "?random="+ new Date(),
+            type: "POST",
+            async: true,
+			data: {"id" :id},
+            success: function (result) {
+                UI.HideLoading();
+			    if (result.IsSuccess)
+				{
+                    td.prev().html(result.Data.Next);
+                    td.prev().prev().html(result.Data.Prev);
+				}
+            }
+		});
+    });
+
+    $(".btn-delete").click(function (event) {
+        if ($(this).attr("disabled") == "disabled") {
+            event.preventDefault();
+            return;
+		}
+
+		var td = $(this).parent();
+        UI.ShowLoading();
+
+        $.ajax({
+            url: "/task/delete" + "?random="+ new Date(),
+            type: "POST",
+            async: false,
+            data: {"id" :td.attr("Id")},
+            success: function (result) {
+                if (result.IsSuccess)
+                    td.parent().remove();
+                UI.HideLoading();
+            }
+        });
+    });
+
+    InitBtn();
+});
+
+//处理其它按钮的显示状态
+function InitBtn (id) {
+    if (id === undefined) {
+        ManageBtnShow($(".job-btn"));
+	}
+	else {
+        ManageBtnShow($("td[class='job-btn'][Id='"+ id + "']"));
+	}
+}
+
+function ManageBtnShow(jtd) {
+    jtd.each(function () {
+        var status = $(this).attr("status");
+
+        var tempstart = $(this).find("a.btn-start");
+        var tempedit = $(this).find("a.btn-edit");
+        var temprun = $(this).find("a.btn-run");
+        var tempdelete = $(this).find("a.btn-delete");
+
+        if (status == 0) {
+            //处理开始和停止
+            tempstart.removeClass("btn-info").addClass("btn-success");
+            tempstart.html("开始");
+
+            //处理编辑
+            tempedit.addClass("btn-info").removeAttr("disabled");
+
+            //运行
+            temprun.removeClass("btn-info").attr("disabled", "disabled");
+
+            //删除
+            tempdelete.addClass("btn-info").removeAttr("disabled");
+
+        } else {
+            //处理开始和停止
+            tempstart.removeClass("btn-success").addClass("btn-info");
+            tempstart.html("停止");
+
+            //处理编辑
+            tempedit.removeClass("btn-info").attr("disabled", "disabled");
+
+            //运行
+            temprun.addClass("btn-info").removeAttr("disabled");
+
+            //删除
+            tempdelete.removeClass("btn-info").attr("disabled", "disabled");
+        }
+    });
+}
+
+function batch(action) {
+	$(".alert").hide();
+	if ($("input[name='ids']:checked").size() < 1) {
+		$(".alert").text("请选择要操作的任务");
+		$(".alert").show();
+	} else {
+		var url = "{{urlfor "TaskController.Batch"}}";
+		$.post(url + "?action=" + action, $("#form-list").serialize(), function(out) {
+			if (out.status != 0) {
+				$(".alert").text(out.msg);
+				$(".alert").show();
+			} else {
+				window.location.reload();
+			}
+		}, "json");
+	}
+	return false;
+}
+</script>
