@@ -1,0 +1,1 @@
+github.com-> robfig -> cron.go需要作些修改，达到可以删除任务
