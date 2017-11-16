@@ -81,13 +81,13 @@
 					<label class="control-label">邮件通知</label>
 					<div class="controls">
 						<label class="radio inline">
-							<input type="radio" value="0" name="notify" {{if eq .task.Notify 0}}checked{{end}}> 不通知
+							<input type="radio" value="0" name="NotNotify" {{if eq .task.Notify 0}}checked{{end}}> 不通知
 						</label>
 						<label class="radio inline">
-							<input type="radio" value="1" name="notify" {{if eq .task.Notify 1}}checked{{end}}> 执行失败时通知
+							<input type="radio" value="1" name="FaildNotify" {{if eq .task.Notify 1}}checked{{end}}> 执行失败时通知
 						</label>
 						<label class="radio inline">
-							<input type="radio" value="2" name="notify" {{if eq .task.Notify 2}}checked{{end}}> 执行结束时通知
+							<input type="radio" value="2" name="OverNotify" {{if eq .task.Notify 2}}checked{{end}}> 执行结束时通知
 						</label>
 					</div>	<!-- /controls -->			
 				</div> <!-- /control-group -->

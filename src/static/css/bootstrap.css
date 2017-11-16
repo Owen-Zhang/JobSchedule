@@ -3192,7 +3192,9 @@ button.close {
   bottom: 0;
   left: 0;
   z-index: 1030;
-  background-color: #000000;
+  background-color: #DCDCDC;
+  opacity: 0.1;
+  filter: alpha(opacity=10) !important;
 }
 
 .modal-backdrop.fade {

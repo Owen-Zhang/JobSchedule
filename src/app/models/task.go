@@ -2,8 +2,9 @@ package models
 
 import (
 	"fmt"
-	"github.com/astaxie/beego/orm"
 	"time"
+
+	"github.com/astaxie/beego/orm"
 )
 
 const (
@@ -21,6 +22,7 @@ type Task struct {
 	Description  string
 	CronSpec     string
 	RunFileName  string
+	OldZipFile   string
 	Concurrent   int
 	Command      string
 	Status       int

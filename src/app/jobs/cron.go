@@ -2,10 +2,8 @@ package jobs
 
 import (
 	"github.com/astaxie/beego"
-	//"cron"
 	"github.com/robfig/cron"
 	"sync"
-
 )
 
 var (

@@ -6,7 +6,8 @@ CREATE TABLE `t_task` (
   `task_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '任务类型',
   `description` varchar(200) NOT NULL DEFAULT '' COMMENT '任务描述',
   `cron_spec` varchar(100) NOT NULL DEFAULT '' COMMENT '时间表达式',
-  `run_file_name` varchar(200) NOT DEFAULT '' COMMENT '运行程序的路径信息',
+  `run_file_name` varchar(200) NOT NULL DEFAULT '' COMMENT '运行程序的路径信息',
+  `old_zip_file` varchar(200) NOT NULL DEFAULT '' COMMENT '当前运行程序的上传zip包名称',
   `concurrent` tinyint(4) NOT NULL DEFAULT '0' COMMENT '是否只允许一个实例',
   `command` text NOT NULL COMMENT '命令详情',
   `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0停用 1启用',
@@ -19,7 +20,7 @@ CREATE TABLE `t_task` (
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_group_id` (`group_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `t_task_group` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -29,7 +30,7 @@ CREATE TABLE `t_task_group` (
   `create_time` int(11) NOT NULL DEFAULT '0' COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 CREATE TABLE `t_task_log` (
@@ -42,7 +43,7 @@ CREATE TABLE `t_task_log` (
   `create_time` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_task_id` (`task_id`,`create_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 CREATE TABLE `t_user` (
@@ -56,7 +57,7 @@ CREATE TABLE `t_user` (
   `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '状态，0正常 -1禁用',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_user_name` (`user_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `t_user` (`id`, `user_name`, `email`, `password`, `salt`, `last_login`, `last_ip`, `status`)
-VALUES (1,'admin','admin@example.com','7fef6171469e80d32c0559f88b377245','',0,'',0);
+VALUES (1,'admin','admin@example.com','13355ecfa8973ec8eb85133ebd84179b','',0,'',0);

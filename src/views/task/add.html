@@ -112,14 +112,14 @@
 				<div class="control-group">											
 					<label class="control-label" for="task_name">任务名称</label>
 					<div class="controls">
-						<input type="text" class="span6" id="task_name">
+						<input type="text" value="{{.task.TaskName}}" class="span6" id="task_name">
 					</div>				
 				</div>
 								
 				<div class="control-group">											
 					<label class="control-label" for="description">任务说明</label>
 					<div class="controls">
-						<textarea class="span6" id="description" rows="3"></textarea>
+						<textarea class="span6" id="description" rows="3">{{.task.Description}}</textarea>
 					</div>
 				</div>
 				
@@ -138,10 +138,10 @@
 					<label class="control-label">是否只允许一个实例</label>
 					<div class="controls concurrent">
 						<label class="radio inline ">
-							<input type="radio" value="0" checked> 是
+							<input type="radio" value="0" name="yes"> 是
 						</label>
 						<label class="radio inline">
-							<input type="radio" value="1"> 否
+							<input type="radio" value="1" name="no"> 否
 						</label>
 						<p class="help-block">设为“是”的话，如果该任务在上一个时间点还没执行完，则略过不执行</p>
 					</div>
@@ -150,7 +150,7 @@
 				<div class="control-group">											
 					<label class="control-label" for="cron_spec">cron表达式</label>
 					<div class="controls">
-						<input type="text" class="span6" id="cron_spec" value="">
+						<input type="text" class="span6" id="cron_spec" value="{{.task.CronSpec}}">
 						<a href="{{urlfor "HelpController.Index"}}" target="_blank">参见使用帮助</a>
 					</div>
 				</div>
@@ -158,7 +158,7 @@
 				<div class="control-group">											
 					<label class="control-label" for="command">命令脚本</label>
 					<div class="controls">
-						<textarea class="span6" id="command" rows="6"></textarea>
+						<textarea class="span6" id="command" rows="6">{{.task.Command}}</textarea>
 					</div>
 				</div>
 
@@ -184,7 +184,7 @@
 				<div class="control-group">											
 					<label class="control-label" for="timeout">超时设置</label>
 					<div class="controls">
-						<input type="text"  class="span1" id="timeout" value="0"> 秒
+						<input type="text"  class="span1" id="timeout" value="{{.task.Timeout}}"> 秒
 						<span class="help-block">不设置的话，默认超时时间为1天</span>
 					</div>
 				</div>
@@ -193,13 +193,13 @@
 					<label class="control-label">邮件通知</label>
 					<div class="controls notify">
 						<label class="radio inline">
-							<input type="radio" value="0" checked> 不通知
+							<input type="radio" value="0" name="NotNotify"> 不通知
 						</label>
 						<label class="radio inline">
-							<input type="radio" value="1"> 执行失败时通知
+							<input type="radio" value="1" name="FaildNotify"> 执行失败时通知
 						</label>
 						<label class="radio inline">
-							<input type="radio" value="2"> 执行结束时通知
+							<input type="radio" value="2" name="OverNotify"> 执行结束时通知
 						</label>
 					</div>
 				</div>
@@ -230,7 +230,27 @@
 
 <script type="text/javascript">
 $(function () {
-
+	$("#group_id").val({{$.task.GroupId}});
+	
+	var typeName = 'no';
+	if ({{.task.Concurrent}} == undefined || {{.task.Concurrent}} == 0)
+		typeName = 'yes';				
+	$("input:radio[name='" + typeName + "']").attr("checked",'checked');
+	
+	if ({{$.task.OldZipFile}} && {{$.task.OldZipFile}} != "") {
+		$(".filestate").show().text({{$.task.OldZipFile}});
+	}
+	
+	var notifyName = 'NotNotify';
+	var notifyValue = {{.task.Notify}};
+	if (!notifyValue) //notifyValue == undefined || notifyValue == "" || notifyValue == 0
+		notifyName = 'NotNotify';	
+	else if (notifyValue == 1)		
+		notifyName = 'FaildNotify';	
+	else 
+		notifyName = 'OverNotify';		
+	$("input:radio[name='" + notifyName + "']").attr("checked",'checked');
+	
     //初始化上传组件信息
     $("#uploadFile").fileupload({
         done: function (e, result) {
@@ -266,6 +286,7 @@ $(function () {
             type: "POST",
             async: true,
             data: {
+				"id": {{.task.Id}},
                 "group_id": $("#group_id").val(),
                 "task_name": $("#task_name").val(),
                 "description": $("#description").val(),
@@ -275,7 +296,8 @@ $(function () {
                 "notify": $(".notify input:checked").val(),
                 "timeout": $("#timeout").val(),
                 "notify_email": $("#notify_email").val(),
-                "runfilename": $("#uploadFile").attr("data-file") == undefined ? "" : $("#uploadFile").attr("data-file")
+                "runfilename": $("#uploadFile").attr("data-file") == undefined ? "" : $("#uploadFile").attr("data-file"),
+				"oldzipfile": $.trim($(".filestate").text())
 			},
             success: function (result) {
                 if (result.IsSuccess) {

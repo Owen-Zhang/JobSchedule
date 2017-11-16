@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/astaxie/beego"
 	"app/controllers"
 	"app/jobs"
 	_ "app/mail"
 	"app/models"
 	"html/template"
 	"net/http"
+
+	"github.com/astaxie/beego"
 	//"fmt"
 	//"github.com/astaxie/beego/logs"
 )
@@ -54,8 +55,6 @@ func main() {
 	beego.Router("/help", &controllers.HelpController{}, "*:Index")
 	beego.AutoRouter(&controllers.TaskController{})
 	beego.AutoRouter(&controllers.GroupController{})
-
-	//beego.Router("/task/savetask", &controllers.TaskController{}, "POST:SaveTask")
 
 	beego.BConfig.WebConfig.Session.SessionOn = true
 	beego.Run()

@@ -1,17 +1,18 @@
 package controllers
 
 import (
-	"github.com/astaxie/beego"
-	"github.com/robfig/cron"
 	"app/jobs"
 	"app/libs"
 	"app/models"
+	"app/models/response"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-	"app/models/response"
-	"os"
+
+	"github.com/astaxie/beego"
 	"github.com/mholt/archiver"
+	"github.com/robfig/cron"
 )
 
 type TaskController struct {
@@ -20,7 +21,7 @@ type TaskController struct {
 
 var upload models.Uploadfile
 
-func init(){
+func init() {
 	upload.Tempfilepath = beego.AppConfig.String("upload.tempfolder")
 	upload.Runtimepath = beego.AppConfig.String("upload.runtimefolder")
 }
@@ -81,7 +82,7 @@ func (this *TaskController) List() {
 }
 
 // 上传要运行的文件
-func(this *TaskController) UploadRunFile() {
+func (this *TaskController) UploadRunFile() {
 	f, h, err := this.GetFile("files[]")
 	defer f.Close()
 
@@ -96,8 +97,8 @@ func(this *TaskController) UploadRunFile() {
 		return
 
 	} else {
-		fileTool := &libs.FileTool{Url:h.Filename}
-		exts := []string {"zip"} //这个要从配制文件中去取
+		fileTool := &libs.FileTool{Url: h.Filename}
+		exts := []string{"zip"} //这个要从配制文件中去取
 		if !fileTool.CheckFileExt(exts) {
 			uploadResult.Msg = "请上传正确的文件类型"
 			this.Data["json"] = uploadResult
@@ -114,7 +115,7 @@ func(this *TaskController) UploadRunFile() {
 		}
 
 		filePath := upload.Tempfilepath + uuidFileName
-		os.MkdirAll(upload.Tempfilepath,0777)
+		os.MkdirAll(upload.Tempfilepath, 0777)
 		this.SaveToFile("files[]", filePath)
 
 		uploadResult.IsSuccess = true
@@ -128,27 +129,65 @@ func(this *TaskController) UploadRunFile() {
 
 // 添加任务
 func (this *TaskController) Add() {
-	// 分组列表
 	groups, _ := models.TaskGroupGetList(1, 100)
 	this.Data["groups"] = groups
 	this.Data["pageTitle"] = "添加任务"
 	this.display()
 }
 
+// 编辑任务
+func (this *TaskController) Edit() {
+	id, _ := this.GetInt("id")
+
+	task, err := models.TaskGetById(id)
+	if err != nil {
+		this.showMsg(err.Error())
+	}
+
+	// 分组列表
+	groups, _ := models.TaskGroupGetList(1, 100)
+	this.Data["groups"] = groups
+	this.Data["task"] = task
+	this.Data["pageTitle"] = "编辑任务"
+	this.display("task/add")
+}
+
 //保存任务
 func (this *TaskController) SaveTask() {
+	id, _ := this.GetInt("id", 0)
+	isNew := true
+	if id != 0 {
+		isNew = false
+	}
+
 	task := new(models.Task)
-	task.UserId = this.userId
-	task.GroupId, _ = this.GetInt("group_id")
+	if !isNew {
+		var err error
+		task, err = models.TaskGetById(id)
+		if err != nil {
+			this.showMsg(err.Error()) //处理成ajax
+		}
+	} else {
+		task.UserId = this.userId
+	}
+
 	task.TaskName = strings.TrimSpace(this.GetString("task_name"))
 	task.Description = strings.TrimSpace(this.GetString("description"))
+	task.GroupId, _ = this.GetInt("group_id")
 	task.Concurrent, _ = this.GetInt("concurrent")
 	task.CronSpec = strings.TrimSpace(this.GetString("cron_spec"))
 	task.Command = strings.TrimSpace(this.GetString("command"))
 	task.Notify, _ = this.GetInt("notify")
 	task.Timeout, _ = this.GetInt("timeout")
+
+	isUploadNewFile := false
+	if task.OldZipFile != strings.TrimSpace(this.GetString("oldzipfile")) {
+		isUploadNewFile = true
+		task.OldZipFile = strings.TrimSpace(this.GetString("oldzipfile"))
+	}
+
 	runFileName := strings.TrimSpace(this.GetString("runfilename"))
-	resultData := &response.ResultData{IsSuccess:false, Msg:"",}
+	resultData := &response.ResultData{IsSuccess: false, Msg: ""}
 	notifyEmail := strings.TrimSpace(this.GetString("notify_email"))
 	if notifyEmail != "" {
 		emailList := make([]string, 0)
@@ -156,7 +195,7 @@ func (this *TaskController) SaveTask() {
 		for _, v := range tmp {
 			v = strings.TrimSpace(v)
 			if !libs.IsEmail([]byte(v)) {
-				resultData.Msg = "无效的Email地址："+v
+				resultData.Msg = "无效的Email地址：" + v
 				this.jsonResult(resultData)
 			} else {
 				emailList = append(emailList, v)
@@ -174,33 +213,41 @@ func (this *TaskController) SaveTask() {
 		this.jsonResult(resultData)
 	}
 
-	//解压文件
-	runfileFolder, err2 := this.unzipUploadFile(runFileName)
-	if err2 != nil {
-		resultData.Msg = err2.Error()
-		this.jsonResult(resultData)
+	if isUploadNewFile {
+		//解压文件
+		runfileFolder, err2 := this.unzipUploadFile(runFileName)
+		if err2 != nil {
+			resultData.Msg = err2.Error()
+			this.jsonResult(resultData)
+		}
+		task.RunFileName = runfileFolder
 	}
 
 	//保存数据库
-	task.RunFileName = runfileFolder
-	if _, err := models.TaskAdd(task); err != nil {
-		resultData.Msg = err.Error()
-		this.jsonResult(resultData)
+	if isNew {
+		if _, err := models.TaskAdd(task); err != nil {
+			resultData.Msg = err.Error()
+			this.jsonResult(resultData)
+		}
+	} else {
+		if err := task.Update(); err != nil {
+			this.ajaxMsg(err.Error(), MSG_ERR)
+		}
 	}
 
 	resultData.IsSuccess = true
 	this.jsonResult(resultData)
 }
 
-func (this *TaskController) unzipUploadFile(filePath string) (string, error)  {
+func (this *TaskController) unzipUploadFile(filePath string) (string, error) {
 	if filePath == "" {
 		return "", nil
 	}
 
-	fileTool := &libs.FileTool{Url:filePath}
-	if (fileTool.IsExist()) {
+	fileTool := &libs.FileTool{Url: filePath}
+	if fileTool.IsExist() {
 		runFileFolder := upload.Runtimepath + fileTool.FileName() + "/"
-		if err := os.MkdirAll(runFileFolder,0777); err != nil {
+		if err := os.MkdirAll(runFileFolder, 0777); err != nil {
 			return "", err
 		}
 		if err2 := archiver.Zip.Open(filePath, runFileFolder); err2 != nil {
@@ -209,61 +256,6 @@ func (this *TaskController) unzipUploadFile(filePath string) (string, error)  {
 		return runFileFolder, nil
 	}
 	return "", nil
-}
-
-// 编辑任务
-func (this *TaskController) Edit() {
-	id, _ := this.GetInt("id")
-
-	task, err := models.TaskGetById(id)
-	if err != nil {
-		this.showMsg(err.Error())
-	}
-
-	if this.isPost() {
-		task.TaskName = strings.TrimSpace(this.GetString("task_name"))
-		task.Description = strings.TrimSpace(this.GetString("description"))
-		task.GroupId, _ = this.GetInt("group_id")
-		task.Concurrent, _ = this.GetInt("concurrent")
-		task.CronSpec = strings.TrimSpace(this.GetString("cron_spec"))
-		task.Command = strings.TrimSpace(this.GetString("command"))
-		task.Notify, _ = this.GetInt("notify")
-		task.Timeout, _ = this.GetInt("timeout")
-
-		notifyEmail := strings.TrimSpace(this.GetString("notify_email"))
-		if notifyEmail != "" {
-			tmp := strings.Split(notifyEmail, "\n")
-			emailList := make([]string, 0, len(tmp))
-			for _, v := range tmp {
-				v = strings.TrimSpace(v)
-				if !libs.IsEmail([]byte(v)) {
-					this.ajaxMsg("无效的Email地址："+v, MSG_ERR)
-				} else {
-					emailList = append(emailList, v)
-				}
-			}
-			task.NotifyEmail = strings.Join(emailList, "\n")
-		}
-
-		if task.TaskName == "" || task.CronSpec == "" || task.Command == "" {
-			this.ajaxMsg("请填写完整信息", MSG_ERR)
-		}
-		if _, err := cron.Parse(task.CronSpec); err != nil {
-			this.ajaxMsg("cron表达式无效", MSG_ERR)
-		}
-		if err := task.Update(); err != nil {
-			this.ajaxMsg(err.Error(), MSG_ERR)
-		}
-
-		this.ajaxMsg("", MSG_OK)
-	}
-
-	// 分组列表
-	groups, _ := models.TaskGroupGetList(1, 100)
-	this.Data["groups"] = groups
-	this.Data["task"] = task
-	this.Data["pageTitle"] = "编辑任务"
-	this.display()
 }
 
 // 任务执行日志列表
@@ -410,11 +402,11 @@ func (this *TaskController) Start() {
 	startJob := jobs.GetEntryById(id)
 	this.Data["json"] = &response.ResultData{
 		IsSuccess: true,
-		Msg: "",
+		Msg:       "",
 		Data: &response.JobInfo{
-			Status:1,
-			Prev:time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
-			Next:beego.Date(startJob.Next, "Y-m-d H:i:s"),
+			Status: 1,
+			Prev:   time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
+			Next:   beego.Date(startJob.Next, "Y-m-d H:i:s"),
 		},
 	}
 	this.ServeJSON()
@@ -435,11 +427,11 @@ func (this *TaskController) Pause() {
 
 	this.Data["json"] = &response.ResultData{
 		IsSuccess: true,
-		Msg: "",
+		Msg:       "",
 		Data: &response.JobInfo{
-			Status:0,
-			Prev: time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
-			Next:"-",
+			Status: 0,
+			Prev:   time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
+			Next:   "-",
 		},
 	}
 	this.ServeJSON()
@@ -460,11 +452,11 @@ func (this *TaskController) Run() {
 
 	this.Data["json"] = &response.ResultData{
 		IsSuccess: true,
-		Msg: "",
+		Msg:       "",
 		Data: &response.JobInfo{
-			Status:1,
-			Prev:time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
-			Next:beego.Date(startJob.Next, "Y-m-d H:i:s"),
+			Status: 1,
+			Prev:   time.Unix(task.PrevTime, 0).Format("2006-01-02 15:04:05"),
+			Next:   beego.Date(startJob.Next, "Y-m-d H:i:s"),
 		},
 	}
 	this.ServeJSON()
@@ -478,8 +470,8 @@ func (this *TaskController) Delete() {
 
 	this.Data["json"] = &response.ResultData{
 		IsSuccess: true,
-		Msg: "",
-		Data: true,
+		Msg:       "",
+		Data:      true,
 	}
 	this.ServeJSON()
 }

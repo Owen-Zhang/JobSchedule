@@ -2930,7 +2930,8 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endCo
 	bottom: 0;
 	left: 0;
 	z-index: 1040;
-	background-color: #000000;
+	background-color: #DCDCDC;
+	filter: alpha(opacity=10) !important;
 }
 .modal-backdrop.fade {
 	opacity: 0;
